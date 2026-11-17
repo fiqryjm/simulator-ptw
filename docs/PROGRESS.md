@@ -57,11 +57,20 @@ Dokumen ini mencatat progres pengembangan aplikasi **Simulator PTW** berdasarkan
 - **QR Code & Halaman Verifikasi:** QR code lokal (`qrcode`) disematkan pada PDF menuju `/verify/[id]` ([src/app/[locale]/verify/[id]/page.tsx](../src/app/%5Blocale%5D/verify/%5Bid%5D/page.tsx)) yang hanya menampilkan metadata status minimal dan disclaimer simulasi.
 - **Pengalih Bahasa & Admin Tenant:** Switcher `ID | EN` pada banner atas seluruh halaman ([src/components/language-switcher.tsx](../src/components/language-switcher.tsx)), serta konsol `TENANT_ADMIN` ([src/components/tenant-admin-console.tsx](../src/components/tenant-admin-console.tsx)) untuk mengatur ambang ketinggian, zona waktu, bobot skor, dan pengguna tenant.
 
+### 6. Perbaikan Review D-45, D-46 & D-47 (Penilaian & Tukar Peran)
+- **Atribusi Riwayat via `Transition.actorId` (D-45.1):** `computeParticipantScore()` ([src/modules/scoring/service.ts](../src/modules/scoring/service.ts)) memakai `Transition.actorId` (bukan `actorRole`), sehingga penukaran peran tidak mengubah skor riwayat dan aksi multi-peran peserta tetap dinilai.
+- **Normalisasi Bobot Komponen Aktif (D-45.2):** Komponen tanpa `seededError` relevan (dan bukan komponen wajib peran) dikeluarkan dari perhitungan, dan bobot komponen aktif dinormalisasi ulang; jika semua komponen kosong, `totalScore = 0`.
+- **Penilaian `COORDINATOR` (D-45.3):** Dinilai pada komponen `PROCEDURE` dari `SupervisionNote` yang dibuat selama jendela waktu izin berstatus `ACTIVE` (`>= 1` catatan = `100`, `0` = `0`).
+- **Penalti `CRITICAL` Belum Diperbaiki (D-45.4):** Menambahkan `fixRule` pada [src/modules/scenario/default-scenarios.ts](../src/modules/scenario/default-scenarios.ts) dan `evaluateUnfixedCriticalErrors()` ([src/modules/scenario/service.ts](../src/modules/scenario/service.ts)). Saat transisi `SUPERVISOR`/`ISSUER`, server mengevaluasi data aktual `Permit`/`AdditionalPermit`/`JsaRecord` dan menyimpan `unfixedCriticalErrorIds` ke `Transition.payloadJson`.
+- **Tukar Peran Terbatas & Aman Konflik (D-45.5 & D-47):** `swapParticipantRole()` ([src/modules/session/service.ts](../src/modules/session/service.ts)) hanya boleh dijalankan `INSTRUCTOR` pemilik sesi (`TENANT_ADMIN` ditolak `403`), hanya memindahkan `Permit.applicantId` milik pemohon sebelumnya sambil menaikkan `currentVersion + 1`, dan mencatat `changedPermitIds` di `AuditLog`.
+- **Flag Lintas Peran (D-46):** Flag yang cocok dengan `seededError` tetapi tidak relevan bagi peran peserta diabaikan (bukan tanda palsu, tidak menambah poin).
+- **PRD Diperbarui:** [docs/PRD.md](PRD.md) bagian 17 diperbarui pada **D-36**, **D-39**, **D-45** (selesai), **D-46**, dan **D-47**.
+
 ---
 
 ## Status Pengujian Terakhir
 
 - **Typecheck & Lint (`npm run typecheck`, `npm run lint`):** Lulus tanpa error maupun warning.
-- **Unit Test (`npm test` / Vitest):** **10 file test, 41 unit test lulus** (state machine, RBAC & isolasi tenant, rate limiting, password hashing, template JSON schema & PDF escaping, permit service & optimistic locking, konsistensi skenario 3 sektor, kalkulasi skor & CSV injection, session service, serta sinkronisasi offline & QR PDF).
+- **Unit Test (`npx vitest run --coverage`):** **10 file test, 45 unit test lulus**, dengan cakupan `src/modules/scoring/service.ts` mencapai **90,36% Statements / 100% Functions / 90,36% Lines** (target `>= 80%`).
 - **Build Produksi (`npm run build`):** Lulus untuk seluruh 39 rute App Router + bundle service worker `/sw.js`.
-- **End-to-End (`npx playwright test` terhadap Neon Postgres):** **4/4 E2E test lulus dalam 50,8 detik** (`auth-dashboard.spec.ts`, `permit-lifecycle.spec.ts`, `session-scoring.spec.ts`, dan `m3-pwa-verify-i18n.spec.ts`).
+- **End-to-End (`npx playwright test` terhadap Neon Postgres):** **4/4 E2E test lulus dalam 41,7 detik** (`auth-dashboard.spec.ts`, `m3-pwa-verify-i18n.spec.ts`, `permit-lifecycle.spec.ts`, dan `session-scoring.spec.ts`).

@@ -25,9 +25,11 @@ Semua akun demo pada tenant **PT Simulator PtW FJM** menggunakan kata sandi defa
 | `SUPERVISOR` (Pengawas) | `supervisor@demo.ptw.local` | Mereview pengajuan PTW, memberi catatan metode & dampak, menyetujui ke Pemberi Izin, mengembalikan, atau menolak |
 | `ISSUER` (Pemberi Izin) | `issuer@demo.ptw.local` | Menyetujui sub-formulir izin tambahan, menandatangani & menerbitkan izin, menangguhkan/mengaktifkan kembali, dan menutup izin |
 | `COORDINATOR` (Koordinator) | `coordinator@demo.ptw.local` | Menambahkan catatan pengawasan berstempel waktu selama izin berstatus `Aktif` |
-| `INSTRUCTOR` (Instruktur) | `instructor@demo.ptw.local` | Membuat sesi pelatihan, memilih skenario 3 sektor, menukar peran peserta, memantau skor real-time (SSE), reset/tutup sesi, ekspor CSV |
-| `TENANT_ADMIN` (Admin Klien) | `admin@demo.ptw.local` | Mengelola pengguna tenant (tambah & aktif/nonaktifkan) serta mengatur ambang ketinggian, zona waktu, dan bobot penilaian |
+| `INSTRUCTOR` (Instruktur) | `instructor@demo.ptw.local` | Membuat sesi pelatihan, memilih skenario 3 sektor, satu-satunya peran yang boleh menukar peran peserta (**D-47**), memantau skor real-time (SSE), reset/tutup sesi, ekspor CSV |
+| `TENANT_ADMIN` (Admin Klien) | `admin@demo.ptw.local` | Mengelola pengguna tenant (tambah & aktif/nonaktifkan) serta mengatur ambang ketinggian, zona waktu, dan bobot penilaian *(tidak dapat menukar peran peserta)* |
 | `SUPER_ADMIN` | `superadmin@system.ptw.local` | Pengelolaan platform lintas tenant |
+
+> **Catatan Peran Sesi:** Hak akses pada izin di dalam suatu sesi mengikuti peran simulasi peserta (`Participant.simulatedRole`) pada sesi tersebut. Jika instruktur menukar peran `APPLICANT`, izin milik pemohon sebelumnya berpindah ke pemohon baru dan pemohon lama perlu memuat ulang jika masih membuka draf.
 
 ---
 
@@ -101,7 +103,11 @@ Memindai QR code (atau membuka `/verify/[id]`) akan menampilkan halaman verifika
 ### Untuk Peserta (`APPLICANT`, `SUPERVISOR`, `ISSUER`, `COORDINATOR`)
 1. Buka izin pada sesi aktif, lalu gulir ke bagian **Deteksi Kesalahan Tersembunyi (Flagging)**.
 2. Pilih `fieldPath` yang bermasalah dan isi **Alasan** (minimal 10 karakter), lalu klik **Tandai Kesalahan**. *(Selama latihan berlangsung, skor dan kunci jawaban disembunyikan agar tidak terjadi tebak-tebakan.)*
-3. Setelah selesai berlatih, klik **Selesaikan Latihan** untuk mengunci flag Anda dan melihat **Skor Akhir (0–100)** beserta daftar kesalahan yang ditemukan, terlewat, dan penjelasannya.
+3. Catatan penilaian prosedur:
+   - `SUPERVISOR` dan `ISSUER` wajib memastikan kesalahan `CRITICAL` pada data PTW/JSA/Izin Tambahan **sudah diperbaiki** sebelum menyetujui atau menerbitkan izin (sekadar men-flag tanpa memperbaiki data tetap dikenai penalti).
+   - `COORDINATOR` dinilai kepatuhan prosedurnya dari **Catatan Pengawasan Lapangan** yang ditulis selama izin berstatus **Aktif**.
+   - Jika peran peserta ditukar oleh instruktur di tengah sesi, skor atas aksi yang sudah dilakukan sebelumnya tetap terjaga.
+4. Setelah selesai berlatih, klik **Selesaikan Latihan** untuk mengunci flag Anda dan melihat **Skor Akhir (0–100)** beserta daftar kesalahan yang ditemukan, terlewat, dan penjelasannya.
 
 ---
 
