@@ -10,7 +10,8 @@
 - **Versi Lokal:** Jalankan `npm run dev`, lalu buka `http://localhost:3000` (atau port yang Anda tentukan).
 - **Bahasa Antarmuka:**
   - Bahasa bawaan adalah **Bahasa Indonesia** (`/login`, `/dashboard`).
-  - Untuk beralih ke **Bahasa Inggris**, klik tautan **English** di halaman login atau tambahkan awalan `/en` pada URL (misalnya `/en/login`).
+  - Untuk beralih antara **ID** dan **EN**, klik tombol **ID | EN** di pojok kanan atas banner simulasi atau gunakan awalan `/en` pada URL (misalnya `/en/login`).
+- **Instalasi PWA:** Aplikasi dapat dipasang ke perangkat desktop/ponsel melalui menu *Install App* pada browser (Chrome/Edge/Safari).
 
 ---
 
@@ -24,8 +25,8 @@ Semua akun demo pada tenant **PT Simulator PtW FJM** menggunakan kata sandi defa
 | `SUPERVISOR` (Pengawas) | `supervisor@demo.ptw.local` | Mereview pengajuan PTW, memberi catatan metode & dampak, menyetujui ke Pemberi Izin, mengembalikan, atau menolak |
 | `ISSUER` (Pemberi Izin) | `issuer@demo.ptw.local` | Menyetujui sub-formulir izin tambahan, menandatangani & menerbitkan izin, menangguhkan/mengaktifkan kembali, dan menutup izin |
 | `COORDINATOR` (Koordinator) | `coordinator@demo.ptw.local` | Menambahkan catatan pengawasan berstempel waktu selama izin berstatus `Aktif` |
-| `INSTRUCTOR` (Instruktur) | `instructor@demo.ptw.local` | Memantau pelatihan *(fitur sesi & skor real-time hadir di M2)* |
-| `TENANT_ADMIN` (Admin Klien) | `admin@demo.ptw.local` | Administrasi tenant *(fitur lengkap hadir di M2/M3)* |
+| `INSTRUCTOR` (Instruktur) | `instructor@demo.ptw.local` | Membuat sesi pelatihan, memilih skenario 3 sektor, menukar peran peserta, memantau skor real-time (SSE), reset/tutup sesi, ekspor CSV |
+| `TENANT_ADMIN` (Admin Klien) | `admin@demo.ptw.local` | Mengelola pengguna tenant (tambah & aktif/nonaktifkan) serta mengatur ambang ketinggian, zona waktu, dan bobot penilaian |
 | `SUPER_ADMIN` | `superadmin@system.ptw.local` | Pengelolaan platform lintas tenant |
 
 ---
@@ -80,8 +81,41 @@ Untuk menjalankan satu siklus izin kerja penuh, pengguna bergantian masuk sesuai
 
 ---
 
-## 4. Mencetak PDF Izin Kerja
+## 4. Mencetak PDF & Verifikasi QR Code
 
-Pada halaman detail izin mana pun, klik tombol **Cetak PDF (Simulasi)** di kanan atas untuk mengunduh/membuka dokumen PDF berformat FR-HSSE-0317 lengkap dengan tanda tangan, riwayat transisi, dan watermark **`SIMULASI — BUKAN IZIN KERJA RESMI`**.
+Pada halaman detail izin mana pun, klik tombol **Cetak PDF (Simulasi)** di kanan atas untuk mengunduh/membuka dokumen PDF berformat FR-HSSE-0317 lengkap dengan tanda tangan, riwayat transisi, **QR code verifikasi**, dan watermark **`SIMULASI — BUKAN IZIN KERJA RESMI`**.
 
-*(Catatan: Generasi PDF menggunakan Playwright Chromium membutuhkan lingkungan runtime Node/Docker dengan Chromium terpasang.)*
+Memindai QR code (atau membuka `/verify/[id]`) akan menampilkan halaman verifikasi status izin secara ringkas tanpa membocorkan data formulir atau kunci jawaban.
+
+---
+
+## 5. Sesi Pelatihan, Deteksi Kesalahan & Penilaian (Instruktur & Peserta)
+
+### Untuk Instruktur (`INSTRUCTOR`)
+1. Masuk menggunakan `instructor@demo.ptw.local`.
+2. Pada panel **Buat Sesi Pelatihan Baru**, pilih salah satu skenario dari 3 sektor (*Oil & Gas*, *Pembangkit Listrik*, atau *Pertambangan*), lalu klik **Buat Sesi & Mulai**.
+3. Bagikan **Kode Gabung** (6 karakter) kepada peserta jika mereka bergabung mandiri lewat kartu **Gabung Sesi Pelatihan** di dashboard masing-masing.
+4. Pantau posisi izin, jumlah flag, skor sementara, dan kesalahan yang belum ditemukan secara **real-time (SSE Live)** pada tabel monitor sesi.
+5. Gunakan dropdown peran untuk **menukar peran peserta**, tombol **Reset Sesi** untuk mengembalikan kondisi ke awal skenario, **Tutup Sesi** untuk membuka umpan balik kelas, dan **Ekspor CSV** untuk mengunduh laporan sesi.
+
+### Untuk Peserta (`APPLICANT`, `SUPERVISOR`, `ISSUER`, `COORDINATOR`)
+1. Buka izin pada sesi aktif, lalu gulir ke bagian **Deteksi Kesalahan Tersembunyi (Flagging)**.
+2. Pilih `fieldPath` yang bermasalah dan isi **Alasan** (minimal 10 karakter), lalu klik **Tandai Kesalahan**. *(Selama latihan berlangsung, skor dan kunci jawaban disembunyikan agar tidak terjadi tebak-tebakan.)*
+3. Setelah selesai berlatih, klik **Selesaikan Latihan** untuk mengunci flag Anda dan melihat **Skor Akhir (0–100)** beserta daftar kesalahan yang ditemukan, terlewat, dan penjelasannya.
+
+---
+
+## 6. Mode Offline (PWA & IndexedDB)
+
+Saat sedang mengisi draf PTW (`DRAFT` atau `RETURNED`) dan koneksi internet terputus:
+- Indikator di bagian atas formulir akan berubah menjadi **Offline (IndexedDB)** dan perubahan draf tersimpan aman secara lokal di browser.
+- Ketika koneksi kembali online, aplikasi otomatis menyinkronkan draf ke server (atau Anda dapat menekan **Sinkronkan Draf Offline**).
+- Jika versi izin di server sudah berubah selama Anda offline (`409`), sistem menampilkan peringatan konflik agar Anda dapat memuat ulang tanpa menimpa data secara diam-diam.
+
+---
+
+## 7. Pengaturan Tenant (`TENANT_ADMIN`)
+
+Masuk sebagai `admin@demo.ptw.local` untuk:
+- Mengatur **Ambang Ketinggian** (default `1,8` m), **Zona Waktu** (default `Asia/Jakarta`), **Bahasa Bawaan**, dan **Bobot Penilaian** (4 komponen, total wajib `100`).
+- Menambahkan pengguna baru atau mengaktifkan/menonaktifkan akun pada tenant Anda.

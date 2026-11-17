@@ -43,14 +43,25 @@ Dokumen ini mencatat progres pengembangan aplikasi **Simulator PTW** berdasarkan
 
 ### 3. Integrasi Database Cloud (Neon) & Deployment (Vercel)
 - Menghubungkan proyek ke **Neon** (`orange-shadow-05032268`, branch `production`, region Singapura) dengan pemisahan `DATABASE_URL` (pooled) untuk aplikasi dan `DATABASE_URL_UNPOOLED` (direct) untuk migrasi Prisma (`directUrl` di `prisma/schema.prisma`).
-- Migrasi `20261117055444_m1_init` dan seed data demo (**PT Simulator PtW FJM**, 7 akun peran, template formulir, skenario dasar, dan sesi `DEMO-M1`) telah diterapkan ke Neon.
-- Aplikasi berhasil di-deploy dan berjalan di Vercel (`https://simulator-ptw.vercel.app`) dengan `trustHost: true` pada Auth.js dan `postinstall: prisma generate`.
+- Migrasi `20261117055444_m1_init` & `20261117073103_m2_session_scoring` serta seed data demo (**PT Simulator PtW FJM**, 7 akun peran, template 3 sektor, 3 skenario MVP ilustratif, dan sesi `DEMO-M1`) telah diterapkan ke Neon.
+- Aplikasi berhasil di-deploy ke Vercel (`https://simulator-ptw.vercel.app`) dengan `trustHost: true` pada Auth.js, `postinstall: prisma generate`, serta `@sparticuz/chromium` + `outputFileTracingIncludes` untuk generasi PDF serverless.
+
+### 4. Milestone M2 — Sesi, Skenario 3 Sektor, Flagging, Penilaian & SSE
+- **Perpustakaan Skenario 3 Sektor:** 3 skenario ilustratif (`OIL_AND_GAS`, `POWER_PLANT`, `MINING`) dengan offset waktu relatif dan `seededErrorsJson[]` (`component`, `relevantRoles[]`, `acceptedFieldPaths[]`, `severity`, `points`, `explanation`), terlindung hanya untuk `INSTRUCTOR`, `TENANT_ADMIN`, dan `SUPER_ADMIN` ([src/modules/scenario/service.ts](../src/modules/scenario/service.ts)).
+- **Manajemen Sesi & Peran Efektif:** Pembuatan sesi dengan `joinCode` 6 karakter tanpa karakter ambigu, `POST /api/sessions/join` (rate-limited), penukaran peran peserta (`Participant.simulatedRole`) yang memindahkan `Permit.applicantId` dan mencatat `AuditLog`, serta `POST /api/sessions/[id]/reset` transaksional ([src/modules/session/service.ts](../src/modules/session/service.ts)).
+- **Flagging & Penilaian Otomatis:** Validasi `fieldPath` terhadap schema template, `reason` ≥ 10 karakter, maks 50 flag/izin, terkunci setelah `finalizedAt` atau `COMPLETED`. Skor 4 komponen (bobot tenant jumlah = 100), penalti tanda palsu, dan pengurangan prosedural dari log `Transition` ([src/modules/scoring/service.ts](../src/modules/scoring/service.ts)).
+- **Dashboard Instruktur Real-Time & Ekspor:** Stream SSE `/api/sessions/[id]/stream` dengan fallback polling serta ekspor CSV UTF-8 BOM anti-CSV injection.
+
+### 5. Milestone M3 — PWA Offline, QR Verifikasi, Bahasa & Admin Tenant
+- **PWA & Sinkronisasi Draf Offline:** Service worker Serwist (`/sw.js`), `manifest.webmanifest`, penyimpanan draf otomatis ke **IndexedDB** ([src/lib/offline-drafts.ts](../src/lib/offline-drafts.ts)), dan sinkronisasi otomatis saat kembali online dengan deteksi konflik `409`.
+- **QR Code & Halaman Verifikasi:** QR code lokal (`qrcode`) disematkan pada PDF menuju `/verify/[id]` ([src/app/[locale]/verify/[id]/page.tsx](../src/app/%5Blocale%5D/verify/%5Bid%5D/page.tsx)) yang hanya menampilkan metadata status minimal dan disclaimer simulasi.
+- **Pengalih Bahasa & Admin Tenant:** Switcher `ID | EN` pada banner atas seluruh halaman ([src/components/language-switcher.tsx](../src/components/language-switcher.tsx)), serta konsol `TENANT_ADMIN` ([src/components/tenant-admin-console.tsx](../src/components/tenant-admin-console.tsx)) untuk mengatur ambang ketinggian, zona waktu, bobot skor, dan pengguna tenant.
 
 ---
 
 ## Status Pengujian Terakhir
 
-- **Unit Test (`npm test` / Vitest):** 6 file test, 24 test lulus (state machine, RBAC & isolasi tenant, rate limiting, password hashing, validator template JSON schema & PDF escaping, serta guard & optimistic locking pada permit service).
 - **Typecheck & Lint (`npm run typecheck`, `npm run lint`):** Lulus tanpa error maupun warning.
-- **Build Produksi (`npm run build`):** Lulus untuk seluruh 23 rute App Router.
-- **End-to-End (`tests/e2e/auth-dashboard.spec.ts`):** Lulus terhadap server produksi yang terhubung ke Neon Postgres. *(E2E penuh `tests/e2e/permit-lifecycle.spec.ts` telah disiapkan untuk dijalankan terhadap server lokal.)*
+- **Unit Test (`npm test` / Vitest):** **10 file test, 41 unit test lulus** (state machine, RBAC & isolasi tenant, rate limiting, password hashing, template JSON schema & PDF escaping, permit service & optimistic locking, konsistensi skenario 3 sektor, kalkulasi skor & CSV injection, session service, serta sinkronisasi offline & QR PDF).
+- **Build Produksi (`npm run build`):** Lulus untuk seluruh 39 rute App Router + bundle service worker `/sw.js`.
+- **End-to-End (`npx playwright test` terhadap Neon Postgres):** **4/4 E2E test lulus dalam 50,8 detik** (`auth-dashboard.spec.ts`, `permit-lifecycle.spec.ts`, `session-scoring.spec.ts`, dan `m3-pwa-verify-i18n.spec.ts`).
