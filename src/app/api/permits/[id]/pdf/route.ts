@@ -1,5 +1,8 @@
 import { Role } from '@prisma/client';
 import { NextResponse } from 'next/server';
+
+export const runtime = 'nodejs';
+export const maxDuration = 30;
 import { handleApiError } from '@/lib/api-response';
 import { DEFAULT_TIMEZONE } from '@/lib/datetime';
 import { buildPermitPdfHtml, generatePermitPdfBuffer } from '@/lib/pdf';

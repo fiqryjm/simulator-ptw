@@ -5,6 +5,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
   typedRoutes: false,
+  serverExternalPackages: ['@sparticuz/chromium', 'playwright-core', 'playwright'],
 };
 
 export default withNextIntl(nextConfig);

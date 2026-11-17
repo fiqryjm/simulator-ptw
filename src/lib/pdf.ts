@@ -225,7 +225,19 @@ export function buildPermitPdfHtml(input: PermitPdfInput): string {
  * Blocks all external network requests to prevent SSRF.
  */
 export async function generatePermitPdfBuffer(html: string): Promise<Buffer> {
-  const browser = await chromium.launch({ headless: true });
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  let browser;
+  if (isServerless) {
+    const sparticuz = (await import('@sparticuz/chromium')).default;
+    const executablePath = await sparticuz.executablePath();
+    browser = await chromium.launch({
+      args: sparticuz.args,
+      executablePath,
+      headless: true,
+    });
+  } else {
+    browser = await chromium.launch({ headless: true });
+  }
   try {
     const page = await browser.newPage();
     await page.route('**/*', (route) => route.abort());
