@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { DynamicFormRenderer } from '@/components/dynamic-form-renderer';
+import { ErrorFlagPanel } from '@/components/error-flag-panel';
 import { JsaForm, type JsaFormState } from '@/components/jsa-form';
 import { PermitStatusBadge } from '@/components/permit-status-badge';
 import { SignaturePadField } from '@/components/signature-pad-field';
@@ -29,7 +30,7 @@ export interface PermitDetailPayload {
     validTo: string;
     dataJson: Record<string, unknown>;
     applicant: { name: string; email: string };
-    session: { scenario: { title: string } };
+    session: { id: string; scenario: { title: string } };
     additionalPermits: Array<{
       id: string;
       type: string;
@@ -67,10 +68,12 @@ export function PermitDetailWorkspace({
   initialDetail,
   effectiveRole,
   locale,
+  availableFieldPaths = [],
 }: {
   initialDetail: PermitDetailPayload;
   effectiveRole: Role;
   locale: string;
+  availableFieldPaths?: string[];
 }) {
   const router = useRouter();
   const [detail, setDetail] = useState<PermitDetailPayload>(initialDetail);
@@ -663,6 +666,18 @@ export function PermitDetailWorkspace({
           ) : null}
         </CardContent>
       </Card>
+
+      {/* Error Flagging & Feedback (M2) */}
+      <ErrorFlagPanel
+        permitId={permit.id}
+        sessionId={permit.session.id}
+        availableFieldPaths={availableFieldPaths}
+        isInstructor={
+          effectiveRole === Role.INSTRUCTOR ||
+          effectiveRole === Role.TENANT_ADMIN ||
+          effectiveRole === Role.SUPER_ADMIN
+        }
+      />
 
       {/* Supervision Notes & Transition History */}
       <div className="grid gap-4 md:grid-cols-2">

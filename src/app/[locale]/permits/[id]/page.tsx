@@ -5,6 +5,7 @@ import { PermitDetailWorkspace, type PermitDetailPayload } from '@/components/pe
 import { getEffectiveRole } from '@/lib/rbac';
 import { requireRole } from '@/lib/server-auth';
 import { getPermitDetail } from '@/modules/permit/service';
+import { getValidFieldPathsForTemplate } from '@/modules/scenario/service';
 
 export default async function PermitDetailPage({
   params,
@@ -31,12 +32,14 @@ export default async function PermitDetailPage({
     const effectiveRole = getEffectiveRole(user, detail.permit.session);
 
     const serialized = JSON.parse(JSON.stringify(detail)) as PermitDetailPayload;
+    const availableFieldPaths = Array.from(getValidFieldPathsForTemplate(detail.ptwTemplate));
 
     return (
       <PermitDetailWorkspace
         initialDetail={serialized}
         effectiveRole={effectiveRole}
         locale={locale}
+        availableFieldPaths={availableFieldPaths}
       />
     );
   } catch {

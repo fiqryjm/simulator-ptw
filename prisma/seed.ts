@@ -1,10 +1,18 @@
-import { FormTemplateType, Industry, Prisma, PrismaClient, Role, SessionStatus } from '@prisma/client';
+import {
+  FormTemplateType,
+  Industry,
+  Prisma,
+  PrismaClient,
+  Role,
+  SessionStatus,
+} from '@prisma/client';
 import { hashPassword } from '../src/lib/password';
 import {
   DEFAULT_ADDITIONAL_PERMIT_TEMPLATES,
   DEFAULT_JSA_TEMPLATE_SCHEMA,
   DEFAULT_PTW_TEMPLATE_SCHEMA,
 } from '../src/modules/permit/default-templates';
+import { DEFAULT_MVP_SCENARIOS } from '../src/modules/scenario/default-scenarios';
 
 const prisma = new PrismaClient();
 
@@ -21,7 +29,17 @@ async function main() {
       slug: 'system',
       isSystem: true,
       industries: [Industry.OIL_AND_GAS, Industry.POWER_PLANT, Industry.MINING],
-      settings: { heightThresholdMeters: 1.8, timezone: 'Asia/Jakarta', defaultLocale: 'id' },
+      settings: {
+        heightThresholdMeters: 1.8,
+        timezone: 'Asia/Jakarta',
+        defaultLocale: 'id',
+        scoringWeights: {
+          documentCompleteness: 25,
+          hazardIdentification: 30,
+          procedureCompliance: 25,
+          additionalPermitsAndIsolation: 20,
+        },
+      },
     },
   });
 
@@ -33,7 +51,17 @@ async function main() {
       slug: 'demo',
       isSystem: false,
       industries: [Industry.OIL_AND_GAS, Industry.POWER_PLANT, Industry.MINING],
-      settings: { heightThresholdMeters: 1.8, timezone: 'Asia/Jakarta', defaultLocale: 'id' },
+      settings: {
+        heightThresholdMeters: 1.8,
+        timezone: 'Asia/Jakarta',
+        defaultLocale: 'id',
+        scoringWeights: {
+          documentCompleteness: 25,
+          hazardIdentification: 30,
+          procedureCompliance: 25,
+          additionalPermitsAndIsolation: 20,
+        },
+      },
     },
   });
 
@@ -109,82 +137,95 @@ async function main() {
     createdUsers[userData.role] = { id: u.id, role: u.role };
   }
 
-  // Seed FormTemplates for demoTenant (OIL_AND_GAS default)
-  const existingPtwTemplate = await prisma.formTemplate.findFirst({
-    where: {
-      tenantId: demoTenant.id,
-      type: FormTemplateType.PTW,
-      industry: Industry.OIL_AND_GAS,
-    },
-  });
+  // Seed FormTemplates for all 3 industries on demoTenant
+  const templateIdsByIndustry: Record<Industry, string[]> = {
+    OIL_AND_GAS: [],
+    POWER_PLANT: [],
+    MINING: [],
+  };
 
-  const templateIds: string[] = [];
-
-  if (!existingPtwTemplate) {
-    const ptwTpl = await prisma.formTemplate.create({
-      data: {
-        tenantId: demoTenant.id,
-        type: FormTemplateType.PTW,
-        industry: Industry.OIL_AND_GAS,
-        schemaJson: DEFAULT_PTW_TEMPLATE_SCHEMA as unknown as Prisma.InputJsonValue,
-        version: 1,
-      },
+  for (const industry of [Industry.OIL_AND_GAS, Industry.POWER_PLANT, Industry.MINING]) {
+    const existingPtw = await prisma.formTemplate.findFirst({
+      where: { tenantId: demoTenant.id, type: FormTemplateType.PTW, industry },
     });
-    templateIds.push(ptwTpl.id);
-  } else {
-    templateIds.push(existingPtwTemplate.id);
-  }
-
-  const existingJsaTemplate = await prisma.formTemplate.findFirst({
-    where: {
-      tenantId: demoTenant.id,
-      type: FormTemplateType.JSA,
-      industry: Industry.OIL_AND_GAS,
-    },
-  });
-
-  if (!existingJsaTemplate) {
-    const jsaTpl = await prisma.formTemplate.create({
-      data: {
-        tenantId: demoTenant.id,
-        type: FormTemplateType.JSA,
-        industry: Industry.OIL_AND_GAS,
-        schemaJson: DEFAULT_JSA_TEMPLATE_SCHEMA as unknown as Prisma.InputJsonValue,
-        version: 1,
-      },
-    });
-    templateIds.push(jsaTpl.id);
-  }
-
-  const existingAdditionalCount = await prisma.formTemplate.count({
-    where: {
-      tenantId: demoTenant.id,
-      type: FormTemplateType.ADDITIONAL,
-      industry: Industry.OIL_AND_GAS,
-    },
-  });
-
-  if (existingAdditionalCount === 0) {
-    for (const addSchema of DEFAULT_ADDITIONAL_PERMIT_TEMPLATES) {
-      await prisma.formTemplate.create({
+    if (!existingPtw) {
+      const created = await prisma.formTemplate.create({
         data: {
           tenantId: demoTenant.id,
-          type: FormTemplateType.ADDITIONAL,
-          industry: Industry.OIL_AND_GAS,
-          schemaJson: addSchema as unknown as Prisma.InputJsonValue,
+          type: FormTemplateType.PTW,
+          industry,
+          schemaJson: DEFAULT_PTW_TEMPLATE_SCHEMA as unknown as Prisma.InputJsonValue,
           version: 1,
+        },
+      });
+      templateIdsByIndustry[industry].push(created.id);
+    } else {
+      templateIdsByIndustry[industry].push(existingPtw.id);
+    }
+
+    const existingJsa = await prisma.formTemplate.findFirst({
+      where: { tenantId: demoTenant.id, type: FormTemplateType.JSA, industry },
+    });
+    if (!existingJsa) {
+      const created = await prisma.formTemplate.create({
+        data: {
+          tenantId: demoTenant.id,
+          type: FormTemplateType.JSA,
+          industry,
+          schemaJson: DEFAULT_JSA_TEMPLATE_SCHEMA as unknown as Prisma.InputJsonValue,
+          version: 1,
+        },
+      });
+      templateIdsByIndustry[industry].push(created.id);
+    } else {
+      templateIdsByIndustry[industry].push(existingJsa.id);
+    }
+
+    const existingAddCount = await prisma.formTemplate.count({
+      where: { tenantId: demoTenant.id, type: FormTemplateType.ADDITIONAL, industry },
+    });
+    if (existingAddCount === 0) {
+      for (const addSchema of DEFAULT_ADDITIONAL_PERMIT_TEMPLATES) {
+        await prisma.formTemplate.create({
+          data: {
+            tenantId: demoTenant.id,
+            type: FormTemplateType.ADDITIONAL,
+            industry,
+            schemaJson: addSchema as unknown as Prisma.InputJsonValue,
+            version: 1,
+          },
+        });
+      }
+    }
+  }
+
+  // Seed 3 MVP illustrative scenarios (with seededErrorsJson)
+  for (const scDef of DEFAULT_MVP_SCENARIOS) {
+    const existing = await prisma.scenario.findFirst({
+      where: { tenantId: demoTenant.id, title: scDef.title },
+    });
+    if (!existing) {
+      await prisma.scenario.create({
+        data: {
+          tenantId: demoTenant.id,
+          title: scDef.title,
+          industry: scDef.industry,
+          description: scDef.description,
+          initialDataJson: scDef.initialData as unknown as Prisma.InputJsonValue,
+          seededErrorsJson: scDef.seededErrors as unknown as Prisma.InputJsonValue,
+          templateIds: templateIdsByIndustry[scDef.industry],
         },
       });
     }
   }
 
-  // Seed 1 minimal Scenario & 1 active Session for M1
-  let scenario = await prisma.scenario.findFirst({
+  // Keep clean baseline scenario & active session DEMO-M1 for M1 lifecycle compatibility
+  let baseScenario = await prisma.scenario.findFirst({
     where: { tenantId: demoTenant.id, title: 'Simulasi Dasar PTW — Oil & Gas' },
   });
 
-  if (!scenario) {
-    scenario = await prisma.scenario.create({
+  if (!baseScenario) {
+    baseScenario = await prisma.scenario.create({
       data: {
         tenantId: demoTenant.id,
         title: 'Simulasi Dasar PTW — Oil & Gas',
@@ -192,7 +233,7 @@ async function main() {
         description: 'Skenario latihan alur izin kerja dasar dari DRAFT hingga CLOSED.',
         initialDataJson: {},
         seededErrorsJson: [],
-        templateIds,
+        templateIds: templateIdsByIndustry[Industry.OIL_AND_GAS],
       },
     });
   }
@@ -204,7 +245,7 @@ async function main() {
       update: { status: SessionStatus.ACTIVE },
       create: {
         tenantId: demoTenant.id,
-        scenarioId: scenario.id,
+        scenarioId: baseScenario.id,
         instructorId: instructor.id,
         joinCode: 'DEMO-M1',
         status: SessionStatus.ACTIVE,
@@ -217,7 +258,6 @@ async function main() {
       Role.SUPERVISOR,
       Role.ISSUER,
       Role.COORDINATOR,
-      Role.INSTRUCTOR,
     ];
 
     for (const r of participantRoles) {
@@ -236,7 +276,7 @@ async function main() {
     }
   }
 
-  console.log('Seed completed: tenants, 7 role users, form templates, and default active session.');
+  console.log('Seed completed: tenants, 7 role users, 3-sector templates, 3 MVP scenarios, and default session.');
 }
 
 main()

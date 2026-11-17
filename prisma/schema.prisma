@@ -71,7 +71,7 @@ model Tenant {
   name       String
   slug       String     @unique
   industries Industry[]
-  settings   Json       @default("{\"heightThresholdMeters\": 1.8, \"timezone\": \"Asia/Jakarta\"}")
+  settings   Json       @default("{\"heightThresholdMeters\": 1.8, \"timezone\": \"Asia/Jakarta\", \"scoringWeights\": {\"documentCompleteness\": 25, \"hazardIdentification\": 30, \"procedureCompliance\": 25, \"additionalPermitsAndIsolation\": 20}}")
   isSystem   Boolean    @default(false)
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
@@ -158,6 +158,7 @@ model Session {
   instructorId String
   joinCode     String        @unique
   status       SessionStatus @default(PENDING)
+  version      Int           @default(1)
   startedAt    DateTime?
   endedAt      DateTime?
   createdAt    DateTime      @default(now())
@@ -175,13 +176,14 @@ model Session {
 }
 
 model Participant {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   tenantId      String
   sessionId     String
   userId        String
   simulatedRole Role
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  finalizedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   session    Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)

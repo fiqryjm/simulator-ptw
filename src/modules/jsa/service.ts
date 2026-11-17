@@ -48,7 +48,10 @@ export async function upsertJsaForPermit(
 ) {
   const permit = await prisma.permit.findUnique({
     where: { id: permitId },
-    include: { jsaRecords: true, session: true },
+    include: {
+      jsaRecords: true,
+      session: { include: { participants: true } },
+    },
   });
 
   if (!permit) {

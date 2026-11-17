@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { signOut } from '@/lib/auth';
 import { getEffectiveRole, type SessionUser } from '@/lib/rbac';
 import { getWaitingPermitsForUser, listPermitsForTenant } from '@/modules/permit/service';
+import { JoinSessionCard } from '@/components/join-session-card';
 import { PermitStatusBadge } from '@/components/permit-status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,13 @@ export async function RoleDashboardShell({ user, expectedRole }: RoleDashboardSh
       </header>
 
       <main className="space-y-6">
+        {effectiveRole === Role.APPLICANT ||
+        effectiveRole === Role.SUPERVISOR ||
+        effectiveRole === Role.ISSUER ||
+        effectiveRole === Role.COORDINATOR ? (
+          <JoinSessionCard />
+        ) : null}
+
         <Card>
           <CardHeader>
             <CardTitle data-testid="waiting-actions-title">

@@ -46,16 +46,42 @@ export function getDashboardPathForRole(role: Role): string {
   return `/dashboard/${ROLE_DASHBOARD_SLUGS[role]}`;
 }
 
+export interface SessionRoleContext {
+  id: string;
+  instructorId?: string;
+  participants?: Array<{
+    userId: string;
+    simulatedRole: Role;
+  }>;
+}
+
 /**
- * Returns the effective role of a user in a training session.
- * In M1 this returns User.role directly; in M2 it will resolve Participant.simulatedRole.
+ * Resolves the effective role of a user within a training session.
+ * Reads Participant.simulatedRole when session participants are provided;
+ * throws AuthorizationError (403) if the user is neither a participant nor the session instructor/admin.
  */
 export function getEffectiveRole(
   user: SessionUser,
-  _session?: { id: string } | null,
+  session?: SessionRoleContext | null,
 ): Role {
-  void _session;
-  return user.role;
+  if (!session || !session.participants) {
+    return user.role;
+  }
+
+  const participant = session.participants.find((p) => p.userId === user.id);
+  if (participant) {
+    return participant.simulatedRole;
+  }
+
+  if (
+    session.instructorId === user.id ||
+    user.role === Role.TENANT_ADMIN ||
+    user.role === Role.SUPER_ADMIN
+  ) {
+    return user.role;
+  }
+
+  throw new AuthorizationError('Anda bukan peserta atau instruktur pada sesi pelatihan ini');
 }
 
 /**

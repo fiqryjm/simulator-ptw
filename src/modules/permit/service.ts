@@ -110,6 +110,7 @@ export async function getPermitDetail(user: SessionUser, permitId: string) {
       applicant: { select: { id: true, name: true, email: true } },
       session: {
         include: {
+          participants: true,
           scenario: { select: { id: true, title: true, industry: true } },
         },
       },
@@ -161,7 +162,7 @@ export async function createPermit(
 ) {
   const session = await prisma.session.findUnique({
     where: { id: input.sessionId },
-    include: { scenario: true },
+    include: { scenario: true, participants: true },
   });
 
   if (!session) {
@@ -235,7 +236,7 @@ export async function updatePermitDraft(
   const permit = await prisma.permit.findUnique({
     where: { id: permitId },
     include: {
-      session: { include: { scenario: true } },
+      session: { include: { scenario: true, participants: true } },
       additionalPermits: true,
     },
   });
@@ -341,7 +342,7 @@ export async function updateAdditionalPermit(
   const permit = await prisma.permit.findUnique({
     where: { id: permitId },
     include: {
-      session: { include: { scenario: true } },
+      session: { include: { scenario: true, participants: true } },
       additionalPermits: true,
     },
   });
@@ -434,7 +435,7 @@ export async function savePermitSignature(
 ) {
   const permit = await prisma.permit.findUnique({
     where: { id: permitId },
-    include: { session: true },
+    include: { session: { include: { participants: true } } },
   });
 
   if (!permit) {
@@ -525,7 +526,7 @@ export async function transitionPermit(
   const permit = await prisma.permit.findUnique({
     where: { id: permitId },
     include: {
-      session: { include: { scenario: true } },
+      session: { include: { scenario: true, participants: true } },
       additionalPermits: true,
       jsaRecords: true,
       signatures: true,
@@ -684,7 +685,7 @@ export async function addSupervisionNote(user: SessionUser, permitId: string, te
 
   const permit = await prisma.permit.findUnique({
     where: { id: permitId },
-    include: { session: true },
+    include: { session: { include: { participants: true } } },
   });
 
   if (!permit) {

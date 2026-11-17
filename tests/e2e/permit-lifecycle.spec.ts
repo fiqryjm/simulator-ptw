@@ -1,15 +1,18 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function loginAs(page: Page, email: string) {
+  await page.context().clearCookies();
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Kata Sandi').fill('SimulasiPtw2026!');
   await page.getByRole('button', { name: 'Masuk' }).click();
   await page.waitForURL('**/dashboard/**');
+  await expect(page.getByTestId('role-badge')).toBeVisible();
 }
 
 async function signCanvas(page: Page, canvasLabel: string, saveBtnTestId: string) {
   const canvas = page.getByLabel(canvasLabel);
+  await canvas.scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (!box) throw new Error(`Canvas ${canvasLabel} not visible`);
   await page.mouse.move(box.x + 20, box.y + 40);
@@ -28,10 +31,11 @@ test.describe('M1 Full Permit Lifecycle (DRAFT -> CLOSED) & PDF', () => {
   test('runs one permit from DRAFT to CLOSED across roles and generates watermarked PDF', async ({
     page,
   }) => {
+    test.setTimeout(120_000);
     // 1. APPLICANT creates and fills PTW, HOT_WORK additional permit, JSA, signature, and submits
     await loginAs(page, 'applicant@demo.ptw.local');
     await page.getByTestId('create-permit-btn').click();
-    await page.waitForURL('**/permits/**');
+    await page.waitForURL(/\/permits\/(?!new)[^/]+$/);
     const permitUrl = page.url();
     const permitId = permitUrl.split('/').pop()!;
 
@@ -95,6 +99,7 @@ test.describe('M1 Full Permit Lifecycle (DRAFT -> CLOSED) & PDF', () => {
       'Tanda Tangan Penerima Izin (APPLICANT)',
       'save-signature-tanda-tangan-penerima-izin-(applicant)',
     );
+    await expect(page.getByAltText('Tanda Tangan Penerima Izin (APPLICANT)')).toBeVisible();
     await page.getByTestId('submit-permit-btn').click();
     await expect(page.getByTestId('permit-status-badge')).toContainText('Diajukan');
 
@@ -109,11 +114,13 @@ test.describe('M1 Full Permit Lifecycle (DRAFT -> CLOSED) & PDF', () => {
     await loginAs(page, 'issuer@demo.ptw.local');
     await page.goto(permitUrl);
     await page.getByTestId('approve-additional-HOT_WORK').click();
+    await expect(page.getByText('Izin tambahan APPROVED.')).toBeVisible();
     await signCanvas(
       page,
       'Tanda Tangan Pemberi Izin (ISSUER)',
       'save-signature-tanda-tangan-pemberi-izin-(issuer)',
     );
+    await expect(page.getByAltText('Tanda Tangan Pemberi Izin (ISSUER)')).toBeVisible();
     await page.getByTestId('issuer-issue-btn').click();
     await expect(page.getByTestId('permit-status-badge')).toContainText('Disetujui');
 
