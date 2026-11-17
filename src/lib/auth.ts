@@ -26,6 +26,7 @@ function getClientIp(request?: Request): string {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   session: {
     strategy: 'jwt',
     maxAge: 8 * 60 * 60, // 8 hours
