@@ -5,12 +5,16 @@ export const runtime = 'nodejs';
 export const maxDuration = 30;
 import { handleApiError } from '@/lib/api-response';
 import { DEFAULT_TIMEZONE } from '@/lib/datetime';
-import { buildPermitPdfHtml, generatePermitPdfBuffer } from '@/lib/pdf';
+import {
+  buildPermitPdfHtml,
+  generatePermitPdfBuffer,
+  generateQrCodeDataUrl,
+} from '@/lib/pdf';
 import { requireRole } from '@/lib/server-auth';
 import { getPermitDetail } from '@/modules/permit/service';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -24,6 +28,9 @@ export async function GET(
     ]);
     const { id } = await context.params;
     const { permit, ptwTemplate, tenantSettings } = await getPermitDetail(user, id);
+    const origin = new URL(request.url).origin;
+    const verifyUrl = `${origin}/verify/${permit.id}`;
+    const qrCodeDataUrl = await generateQrCodeDataUrl(verifyUrl);
 
     const html = buildPermitPdfHtml({
       permitId: permit.id,
@@ -54,6 +61,8 @@ export async function GET(
         comment: t.comment,
         at: t.at,
       })),
+      qrCodeDataUrl,
+      verifyUrl,
     });
 
     const pdfBuffer = await generatePermitPdfBuffer(html);

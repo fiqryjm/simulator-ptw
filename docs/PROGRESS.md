@@ -11,8 +11,8 @@ Dokumen ini mencatat progres pengembangan aplikasi **Simulator PTW** berdasarkan
 | **M0 — Kerangka Proyek** | Selesai | Next.js 15, Prisma 16 entitas, Auth.js v5, RBAC 7 peran, multi-tenant, state machine, `next-intl` (`id`/`en`), CI |
 | **M1 — Alur Inti PTW, JSA & PDF** | Selesai | FormTemplate JSON schema dwibahasa, izin tambahan otomatis, JSA digital, `signature_pad`, alur `DRAFT`–`CLOSED`, FR-35, PDF ber-watermark |
 | **Infrastruktur Cloud (Neon + Vercel)** | Selesai | Neon Postgres (`production`) terhubung (`pooled` + `direct`), migrasi & seed diterapkan, deploy Vercel berjalan |
-| **M2 — Sesi, Skenario & Penilaian** | Belum dimulai | CRUD sesi pelatihan, 3 skenario industri + kesalahan tersisip, flagging, penilaian otomatis, dashboard instruktur SSE |
-| **M3 — PWA Offline, QR & Laporan** | Belum dimulai | Mode offline IndexedDB + Serwist, QR verifikasi pada PDF, ekspor laporan CSV |
+| **M2 — Sesi, Skenario & Penilaian** | Selesai | CRUD sesi pelatihan, 3 skenario industri + kesalahan tersisip, flagging, penilaian otomatis, dashboard instruktur SSE |
+| **M3 — PWA Offline, QR & Laporan** | Selesai | PWA Serwist + IndexedDB sinkronisasi draf offline, QR verifikasi pada PDF & `/verify/[id]`, pengalih bahasa `ID | EN`, konsol `TENANT_ADMIN` |
 
 ---
 

@@ -7,6 +7,8 @@
 /.next/
 /out/
 /build
+/public/sw.js
+/public/sw.js.map
 
 # Environment
 .env

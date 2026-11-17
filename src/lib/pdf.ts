@@ -1,4 +1,5 @@
 import { chromium } from 'playwright';
+import QRCode from 'qrcode';
 import { formatInTenantTimezone } from '@/lib/datetime';
 import {
   getLocalizedText,
@@ -52,6 +53,16 @@ export interface PermitPdfInput {
     comment: string | null;
     at: Date;
   }>;
+  qrCodeDataUrl?: string;
+  verifyUrl?: string;
+}
+
+export async function generateQrCodeDataUrl(url: string): Promise<string> {
+  return QRCode.toDataURL(url, {
+    width: 110,
+    margin: 1,
+    color: { dark: '#0f2942', light: '#ffffff' },
+  });
 }
 
 export function buildPermitPdfHtml(input: PermitPdfInput): string {
@@ -151,6 +162,8 @@ export function buildPermitPdfHtml(input: PermitPdfInput): string {
     )
     .join('');
 
+  const safeQr = safePngDataUrl(input.qrCodeDataUrl);
+
   return `<!DOCTYPE html>
 <html lang="id">
 <head>
@@ -198,6 +211,14 @@ export function buildPermitPdfHtml(input: PermitPdfInput): string {
       <div>Berlaku: ${escapeHtml(formatInTenantTimezone(input.validFrom, input.timezone, 'id'))}</div>
       <div>Sampai: ${escapeHtml(formatInTenantTimezone(input.validTo, input.timezone, 'id'))}</div>
     </div>
+    ${
+      safeQr
+        ? `<div style="text-align:center;">
+            <img src="${safeQr}" alt="QR Verifikasi" style="width:72px;height:72px;" />
+            <div style="font-size:8px;color:#475569;">Verifikasi Status</div>
+          </div>`
+        : ''
+    }
   </div>
 
   ${sectionsHtml}

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { DynamicFormRenderer } from '@/components/dynamic-form-renderer';
 import { ErrorFlagPanel } from '@/components/error-flag-panel';
 import { JsaForm, type JsaFormState } from '@/components/jsa-form';
+import { OfflineSyncIndicator } from '@/components/offline-sync-indicator';
 import { PermitStatusBadge } from '@/components/permit-status-badge';
 import { SignaturePadField } from '@/components/signature-pad-field';
 import { Button } from '@/components/ui/button';
@@ -307,6 +308,14 @@ export function PermitDetailWorkspace({
           {statusMessage}
         </div>
       ) : null}
+
+      <OfflineSyncIndicator
+        permitId={permit.id}
+        expectedVersion={permit.currentVersion}
+        currentData={ptwData}
+        isEditable={isEditable}
+        onSynced={refreshDetail}
+      />
 
       {/* PTW Dynamic Form */}
       <DynamicFormRenderer

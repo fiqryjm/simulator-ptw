@@ -30,7 +30,7 @@ test.describe('M2 Session, Scenario Flagging & Scoring', () => {
       .getByLabel(/Alasan/i)
       .fill('Izin kerja panas wajib dilampirkan untuk pengelasan di area proses');
     await page.getByTestId('submit-flag-btn').click();
-    await expect(page.locator('code', { hasText: /^ptw\.add_hot_work$/ })).toBeVisible();
+    await expect(page.locator('code', { hasText: /^ptw\.add_hot_work$/ }).first()).toBeVisible();
 
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByTestId('finalize-training-btn').click();
