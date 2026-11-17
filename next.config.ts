@@ -13,6 +13,9 @@ const withSerwist = withSerwistInit({
 const nextConfig: NextConfig = {
   typedRoutes: false,
   serverExternalPackages: ['@sparticuz/chromium', 'playwright-core', 'playwright'],
+  outputFileTracingIncludes: {
+    '/api/permits/[id]/pdf': ['./node_modules/@sparticuz/chromium/**/*'],
+  },
 };
 
 export default withSerwist(withNextIntl(nextConfig));

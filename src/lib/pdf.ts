@@ -250,6 +250,7 @@ export async function generatePermitPdfBuffer(html: string): Promise<Buffer> {
   let browser;
   if (isServerless) {
     const sparticuz = (await import('@sparticuz/chromium')).default;
+    sparticuz.setGraphicsMode = false;
     const executablePath = await sparticuz.executablePath();
     browser = await chromium.launch({
       args: sparticuz.args,
