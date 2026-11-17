@@ -15,7 +15,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const user = await requireRole([Role.INSTRUCTOR, Role.TENANT_ADMIN]);
+    const user = await requireRole([Role.INSTRUCTOR]);
     const { id } = await context.params;
     const body = await request.json();
     const parsed = swapSchema.safeParse(body);

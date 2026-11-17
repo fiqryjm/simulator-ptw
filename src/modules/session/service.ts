@@ -255,7 +255,7 @@ export async function swapParticipantRole(
   sessionId: string,
   input: { participantId: string; simulatedRole: Role },
 ) {
-  assertRole(user, [Role.INSTRUCTOR, Role.TENANT_ADMIN]);
+  assertRole(user, [Role.INSTRUCTOR]);
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
@@ -266,8 +266,8 @@ export async function swapParticipantRole(
   }
   assertTenantAccess(user, session.tenantId);
 
-  if (user.role === Role.INSTRUCTOR && session.instructorId !== user.id) {
-    throw new ServiceError(403, 'Hanya instruktur sesi ini yang dapat menukar peran');
+  if (session.instructorId !== user.id) {
+    throw new ServiceError(403, 'Hanya instruktur pemilik sesi ini yang dapat menukar peran');
   }
 
   const target = session.participants.find((p) => p.id === input.participantId);
@@ -275,17 +275,33 @@ export async function swapParticipantRole(
     throw new ServiceError(404, 'Peserta tidak ditemukan dalam sesi ini');
   }
 
+  const previousApplicant = session.participants.find(
+    (p) => p.simulatedRole === Role.APPLICANT && p.id !== target.id,
+  );
+  const previousApplicantUserId = previousApplicant?.userId ?? session.instructorId;
+
   const updated = await prisma.$transaction(async (tx) => {
     const updatedParticipant = await tx.participant.update({
       where: { id: target.id },
       data: { simulatedRole: input.simulatedRole },
     });
 
+    const changedPermitIds: string[] = [];
+
     if (input.simulatedRole === Role.APPLICANT) {
-      await tx.permit.updateMany({
-        where: { sessionId: session.id, tenantId: session.tenantId },
-        data: { applicantId: target.userId },
-      });
+      const permitsToTransfer = session.permits.filter(
+        (p) => p.applicantId === previousApplicantUserId && p.applicantId !== target.userId,
+      );
+      for (const p of permitsToTransfer) {
+        await tx.permit.update({
+          where: { id: p.id },
+          data: {
+            applicantId: target.userId,
+            currentVersion: { increment: 1 },
+          },
+        });
+        changedPermitIds.push(p.id);
+      }
     }
 
     await tx.auditLog.create({
@@ -298,6 +314,7 @@ export async function swapParticipantRole(
         metadataJson: {
           fromRole: target.simulatedRole,
           toRole: input.simulatedRole,
+          changedPermitIds,
         },
       },
     });

@@ -26,6 +26,11 @@ import {
   type AdditionalPermitTemplateSchema,
   type PtwTemplateSchema,
 } from '@/modules/permit/template-schema';
+import {
+  evaluateUnfixedCriticalErrors,
+  parseScenarioInitialData,
+  parseSeededErrors,
+} from '@/modules/scenario/service';
 
 const MAX_SIGNATURE_BYTES = 200 * 1024;
 const PNG_DATA_URL_REGEX = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/;
@@ -620,6 +625,34 @@ export async function transitionPermit(
     permit.status === PermitStatus.RETURNED && input.toStatus === PermitStatus.SUBMITTED;
   const nextVersion = permit.currentVersion + 1;
 
+  // Evaluate unfixed CRITICAL errors on the live permit snapshot at the moment of approval/issuance
+  let transitionPayload: Record<string, unknown> | null = input.payload
+    ? { ...input.payload }
+    : null;
+
+  if (
+    (permit.status === PermitStatus.SUBMITTED &&
+      input.toStatus === PermitStatus.PENDING_ISSUANCE) ||
+    (permit.status === PermitStatus.PENDING_ISSUANCE &&
+      input.toStatus === PermitStatus.APPROVED)
+  ) {
+    const seededErrors = parseSeededErrors(permit.session.scenario.seededErrorsJson);
+    const initialData = parseScenarioInitialData(permit.session.scenario.initialDataJson);
+    const unfixedCriticalErrorIds = evaluateUnfixedCriticalErrors(seededErrors, {
+      ptwData: permitData,
+      additionalPermits: permit.additionalPermits.map((ap) => ({
+        type: ap.type,
+        dataJson: (ap.dataJson as Record<string, unknown>) ?? {},
+      })),
+      jsaData: (permit.jsaRecords[0]?.dataJson as Record<string, unknown>) ?? undefined,
+      initialPtwData: initialData.ptwData,
+    });
+    transitionPayload = {
+      ...(transitionPayload ?? {}),
+      unfixedCriticalErrorIds,
+    };
+  }
+
   return prisma.$transaction(async (tx) => {
     const updated = await tx.permit.updateMany({
       where: {
@@ -658,7 +691,7 @@ export async function transitionPermit(
         actorId: user.id,
         actorRole: effectiveRole,
         comment: input.comment?.trim() || null,
-        payloadJson: (input.payload ?? null) as Prisma.InputJsonValue,
+        payloadJson: (transitionPayload ?? null) as Prisma.InputJsonValue,
       },
     });
 

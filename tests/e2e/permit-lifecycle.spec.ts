@@ -108,7 +108,9 @@ test.describe('M1 Full Permit Lifecycle (DRAFT -> CLOSED) & PDF', () => {
     await page.goto(permitUrl);
     await page.getByLabel(/Catatan Review Metode/i).fill('Metode pengelasan dan isolasi area telah ditinjau.');
     await page.getByTestId('supervisor-approve-btn').click();
-    await expect(page.getByTestId('permit-status-badge')).toContainText('Menunggu Penerbitan');
+    await expect(page.getByTestId('permit-status-badge')).toContainText('Menunggu Penerbitan', {
+      timeout: 15_000,
+    });
 
     // 3. ISSUER approves HOT_WORK, signs, and issues permit
     await loginAs(page, 'issuer@demo.ptw.local');

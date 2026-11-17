@@ -102,6 +102,113 @@ export function getValidFieldPathsForTemplate(
   return paths;
 }
 
+export interface PermitFixSnapshot {
+  ptwData: Record<string, unknown>;
+  additionalPermits: Array<{ type: string; dataJson: Record<string, unknown> }>;
+  jsaData?: Record<string, unknown>;
+  initialPtwData?: Record<string, unknown>;
+}
+
+function getNestedValue(obj: Record<string, unknown> | undefined, path: string): unknown {
+  if (!obj) return undefined;
+  const parts = path.split('.');
+  let curr: unknown = obj;
+  for (const part of parts) {
+    if (curr && typeof curr === 'object' && part in (curr as Record<string, unknown>)) {
+      curr = (curr as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+  return curr;
+}
+
+/**
+ * Evaluates whether a seededError has actually been fixed in the live Permit / AdditionalPermit / JsaRecord data.
+ */
+export function isSeededErrorFixed(err: SeededError, snapshot: PermitFixSnapshot): boolean {
+  const rule = err.fixRule;
+  if (!rule) {
+    // Fallback: compare PTW field against initialPtwData
+    if (err.fieldPath.startsWith('ptw.')) {
+      const key = err.fieldPath.slice(4);
+      const currVal = snapshot.ptwData[key];
+      const initVal = snapshot.initialPtwData?.[key];
+      return currVal !== undefined && currVal !== initVal && String(currVal).trim().length > 0;
+    }
+    return false;
+  }
+
+  if (rule.target === 'PTW') {
+    const val = snapshot.ptwData[rule.fieldPath];
+    if (rule.expectedType === 'EQUALS') {
+      return val === rule.expectedValue;
+    }
+    if (rule.expectedType === 'NOT_EMPTY') {
+      return val !== undefined && val !== null && String(val).trim().length > 0;
+    }
+    if (rule.expectedType === 'NUMERIC_MAX') {
+      const num = typeof val === 'number' ? val : Number(val);
+      return !Number.isNaN(num) && val !== '' && val !== undefined && num <= Number(rule.expectedValue ?? 0);
+    }
+    return false;
+  }
+
+  if (rule.target === 'ADDITIONAL') {
+    const dotIdx = rule.fieldPath.indexOf('.');
+    if (dotIdx === -1) return false;
+    const addType = rule.fieldPath.slice(0, dotIdx);
+    const fieldKey = rule.fieldPath.slice(dotIdx + 1);
+    const addRecord = snapshot.additionalPermits.find((ap) => ap.type === addType);
+    if (!addRecord) return false;
+    const val = addRecord.dataJson[fieldKey];
+
+    if (rule.expectedType === 'EQUALS') {
+      return val === rule.expectedValue;
+    }
+    if (rule.expectedType === 'NOT_EMPTY') {
+      return val !== undefined && val !== null && String(val).trim().length > 0;
+    }
+    if (rule.expectedType === 'NUMERIC_MAX') {
+      const num = typeof val === 'number' ? val : Number(val);
+      return (
+        val !== undefined &&
+        val !== null &&
+        val !== '' &&
+        !Number.isNaN(num) &&
+        num <= Number(rule.expectedValue ?? 0)
+      );
+    }
+    return false;
+  }
+
+  // JSA
+  if (rule.expectedType === 'ARRAY_CONTAINS_CODE') {
+    const steps = Array.isArray(snapshot.jsaData?.steps)
+      ? (snapshot.jsaData?.steps as Array<Record<string, unknown>>)
+      : [];
+    return steps.some((s) => s.hazardCode === rule.expectedValue);
+  }
+
+  const jsaVal = getNestedValue(snapshot.jsaData, rule.fieldPath);
+  if (rule.expectedType === 'EQUALS') {
+    return jsaVal === rule.expectedValue;
+  }
+  if (rule.expectedType === 'NOT_EMPTY') {
+    return jsaVal !== undefined && jsaVal !== null && String(jsaVal).trim().length > 0;
+  }
+  return false;
+}
+
+export function evaluateUnfixedCriticalErrors(
+  seededErrors: SeededError[],
+  snapshot: PermitFixSnapshot,
+): string[] {
+  return seededErrors
+    .filter((err) => err.severity === 'CRITICAL' && !isSeededErrorFixed(err, snapshot))
+    .map((err) => err.id);
+}
+
 /**
  * Lists scenarios for manager roles only (INSTRUCTOR, TENANT_ADMIN, SUPER_ADMIN).
  * Never exposed to participant roles so seededErrorsJson cannot leak.

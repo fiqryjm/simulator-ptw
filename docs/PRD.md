@@ -371,7 +371,7 @@ Bagian ini mencatat keputusan yang diambil selama pengembangan. Jika ada konflik
 | D-17 | Label pada `schemaJson` dwibahasa dengan bentuk objek `{ id, en }`, bukan string tunggal. | Mendukung FR-05. |
 | D-18 | Sinkronisasi izin tambahan otomatis: setiap kali PTW disimpan, server memastikan `AdditionalPermit` bertipe terkait ada untuk jawaban Ya dan menghapus yang masih `DRAFT` jika jawaban menjadi Tidak. | Memenuhi FR-22. |
 | D-19 | Versi formulir: pada transisi `RETURNED` ke `SUBMITTED`, snapshot `dataJson` disimpan ke `PermitVersion` dan `currentVersion` bertambah satu. | Memenuhi FR-26. |
-| D-20 | Daftar periksa persiapan tempat kerja (guard `APPROVED` ke `ACTIVE`) dan pemeriksaan lokasi pasca-pekerjaan (guard `ACTIVE` ke `COMPLETED`) diimplementasikan sebagai daftar periksa Ya/Tidak berbasis template (FR-35). Bentuk penyimpanan terkecil diusulkan agent dan dijelaskan di Implementation Plan sebelum migrasi. | Mencerminkan tahap 3 dan 5 diagram alir. Status: bentuk penyimpanan menunggu usulan agent. |
+| D-20 | Daftar periksa persiapan tempat kerja (guard `APPROVED` ke `ACTIVE`) dan pemeriksaan lokasi pasca-pekerjaan (guard `ACTIVE` ke `COMPLETED`) diimplementasikan sebagai daftar periksa Ya/Tidak berbasis template (FR-35). Item dwibahasa didefinisikan di `FormTemplate.schemaJson.lifecycleChecklists` (`workplacePrep`, `postWorkInspection`). Saat transisi, server memvalidasi payload lewat `validateLifecycleChecklist()` lalu menyimpannya di kolom `Transition.payloadJson` (`Json?`) bersama audit log. | Mencerminkan tahap 3 dan 5 diagram alir. Status: ditutup 17 November 2026 sesuai implementasi. Tidak ada tabel baru; jawaban daftar periksa melekat pada transisi yang dijaganya. |
 | D-21 | Notifikasi versi minimal (FR-31): dashboard tiap peran menampilkan jumlah dan daftar izin berstatus Menunggu tindakan Anda. Tabel notifikasi terpisah belum dibuat. | Cukup untuk MVP. |
 | D-22 | Optimistic locking pada `transitionPermit` dan `updatePermitDraft`. Konflik versi mengembalikan HTTP 409 dengan pesan jelas. | Mengatasi risiko konflik state pada aksi bersamaan (bagian 15). |
 | D-23 | Semua pengecekan hak akses permit melewati satu fungsi `getEffectiveRole(user, session)`. Di M1 fungsi ini mengembalikan `User.role`; di M2 diganti ke `Participant.simulatedRole`. | PRD mendefinisikan peran per sesi; mencegah pembongkaran kode saat M2. |
@@ -392,9 +392,59 @@ Bagian ini mencatat keputusan yang diambil selama pengembangan. Jika ada konflik
 | Bagian | Dampak |
 | --- | --- |
 | 5 (State Machine) | Guard `SUSPENDED` ke `ACTIVE` mengikuti D-05; pelaku `EXPIRED` adalah aktor `SYSTEM` (D-04). |
-| 6.4 (FR-31, FR-35) | Cakupan MVP mengikuti D-20 dan D-21. |
+| 6.4 (FR-31, FR-35) | Cakupan MVP mengikuti D-20 (ditutup) dan D-21. |
 | 10 (Keamanan) | Hash kata sandi: bcrypt (D-02); keamanan PDF mengikuti D-11. |
 | 11 (Arsitektur) | Backend berupa satu aplikasi Next.js (monolit) untuk MVP; XState mengikuti D-01. |
 | 15 (Pertanyaan terbuka) | No. 1 (ambang ketinggian) tetap terbuka dengan bawaan 1,8 m; no. 2 (pemisahan izin B3 dan penggalian) tetap terbuka, dengan dampak minimal berkat D-15. |
 
 Keputusan baru dari M2 dan seterusnya ditambahkan sebagai bagian 17.5 dan seterusnya dengan penomoran ID yang berlanjut.
+
+### 17.5 Keputusan Milestone M2 (sesi, skenario, penilaian, dashboard)
+
+Disetujui pemilik produk pada 17 November 2026. D-36 dan D-39 mencatat implementasi M2 yang sudah berjalan. Keduanya masih menunggu review pakar K3 dan perbaikan temuan di D-45.
+
+| ID | Keputusan | Alasan dan catatan |
+| --- | --- | --- |
+| D-30 | Skor sementara hanya tampil di dashboard instruktur (SSE). Peserta tidak melihat skor selama berlatih. | Mencegah peserta menebak-nebak berdasarkan perubahan skor. |
+| D-31 | Selama berlatih, peserta tidak melihat skor maupun benar/salah per flag. Umpan balik (ditemukan, terlewat, penjelasan) terbuka hanya setelah (a) peserta menekan «Selesaikan Latihan», atau (b) `Session` berstatus `COMPLETED`. Status izin `SUBMITTED` atau `CLOSED` tidak dipakai sebagai pemicu. | Izin bisa `RETURNED` lalu diajukan ulang, sehingga pemicu berbasis status izin membocorkan kunci jawaban. Menggantikan frasa «setelah submit» pada FR-43. |
+| D-32 | Instruktur read-only di halaman izin. FR-12 (ambil alih peran) tetap P1, dikerjakan paling akhir, dan tidak menahan M2. Jika dikerjakan: berlaku per sesi, dan setiap aksi mencatat `actorId` instruktur serta `actingRole` di `Transition` dan `AuditLog`. | Menjaga jejak audit tetap jujur saat instruktur bertindak atas nama peran lain. |
+| D-33 | `scoringWeights` disimpan di `Tenant.settings`, divalidasi Zod: tepat 4 bobot (komponen bagian 9), jumlah 100. | Memenuhi bagian 13 tanpa tabel baru. |
+| D-34 | Kolom nullable `Participant.finalizedAt` ditambahkan lewat migrasi additive. Penanda finalize tidak disimpan di JSON. Setelah finalize, flag peserta terkunci. | Penanda ini dipakai untuk otorisasi umpan balik (D-31), jadi harus berupa kolom yang dapat di-query dan diaudit. |
+| D-35 | `seededErrorsJson` dan `explanation` hanya keluar ke `INSTRUCTOR` sesi terkait, `TENANT_ADMIN`, dan `SUPER_ADMIN`. Peserta tidak menerimanya lewat API, SSE, export, HTML, maupun bundle JS halaman peserta. `GET /api/scenarios` hanya untuk peran pengelola; stream dan export hanya untuk instruktur sesi itu. | Kunci jawaban yang bocor membuat penilaian tidak bermakna. |
+| D-36 | Skema `seededErrors` (bagian 9) ditambah `component` (`COMPLETENESS` \| `HAZARD_IDENTIFICATION` \| `PROCEDURE` \| `ADDITIONAL_PERMIT_ISOLATION`), `relevantRoles[]`, `acceptedFieldPaths[]`, dan `fixRule?`. Kecocokan flag ditentukan oleh `fieldPath`; `reason` tidak dinilai otomatis dan hanya disimpan untuk debrief. Implementasi final (`computeParticipantScore()` di `src/modules/scoring/service.ts` setelah perbaikan D-45): (1) Transisi peserta diidentifikasi dari `Transition.actorId`, sehingga tukar peran tidak mengubah skor riwayat dan aksi tiap peran historis tetap dinilai. (2) Komponen tanpa `seededError` relevan (dan bukan komponen wajib peran) dikeluarkan dari perhitungan, dan bobot komponen aktif dinormalisasi ulang; jika semua komponen kosong, `totalScore = 0`. (3) `COORDINATOR` dinilai pada `PROCEDURE` dari `SupervisionNote` (`authorId`) yang dibuat selama rentang izin berstatus `ACTIVE` (`>= 1` catatan = 100, `0` = 0). (4) `SUPERVISOR` (`SUBMITTED -> PENDING_ISSUANCE`) dan `ISSUER` (`PENDING_ISSUANCE -> APPROVED`) dikenai penalti `-30` per error `CRITICAL` yang **belum diperbaiki** pada data aktual `Permit`/`AdditionalPermit`/`JsaRecord` saat transisi terjadi (disimpan sebagai `unfixedCriticalErrorIds` di `Transition.payloadJson`). (5) Tanda palsu (`fpPenalty = 10 × jumlah`) mengurangi komponen sesuai bobot penalti; setiap komponen berlantai 0 dan skor total 0–100. | Izin dipakai bersama beberapa peran, sehingga penilaian per peserta perlu aturan eksplisit. Status: selesai diperbarui sesuai D-45; menunggu review akhir pakar K3. |
+| D-37 | `initialDataJson` memakai offset waktu relatif (mis. mulai = saat sesi dibuat, selesai = +8 jam), yang dihitung menjadi waktu absolut saat `createSession` dan `resetSession`. | Tanggal tetap akan membuat guard `APPROVED` ke `ACTIVE` gagal. |
+| D-38 | `POST /api/sessions/join`: `joinCode` acak 6–8 karakter tanpa karakter ambigu, unik, dan diberi rate limit. Hanya untuk pengguna dari tenant yang sama, dan tidak berlaku setelah sesi ditutup. | Melengkapi FR-10 (kode gabung). |
+| D-39 | Melanjutkan D-23: `getEffectiveRole` mengambil sesi dari `permit.sessionId`, lalu membaca `Participant.simulatedRole`. Bukan peserta sesi itu: 403. Instruktur sesi itu: read-only. Seed dan tes M1 disesuaikan, dan e2e M1 tetap hijau. Tukar peran (`swapParticipantRole()` di `src/modules/session/service.ts`): hanya **`INSTRUCTOR` pemilik sesi** (bukan `TENANT_ADMIN`, per D-47). Dalam satu transaksi: `Participant.simulatedRole` diperbarui; jika peran baru `APPLICANT`, hanya `Permit` milik pemohon sebelumnya (`applicantId === previousApplicantUserId`) yang dipindahkan ke pengguna baru sambil menaikkan `Permit.currentVersion + 1` (memicu 409 pada klien lama); `AuditLog` mencatat `SWAP_PARTICIPANT_ROLE` dengan `{ fromRole, toRole, changedPermitIds }`. Setelah itu skor sesi dihitung ulang tanpa mengubah skor aksi historis (`Transition.actorId`). | Peran ditentukan per sesi (bagian 3). Status: selesai diperbarui sesuai D-45 dan D-47. |
+| D-40 | Reset sesi (FR-13) berjalan dalam satu transaksi. `Participant` dan penugasan peran dipertahankan, dan versi sesi dinaikkan sehingga klien lama menerima 409 yang jelas lalu memuat ulang. UI meminta konfirmasi eksplisit. Hanya instruktur sesi itu yang boleh menjalankannya. | Reset bersifat destruktif dan dapat terjadi saat peserta masih mengedit. |
+| D-41 | Flag (FR-41): `fieldPath` divalidasi terhadap template dan path yang tidak dikenal ditolak; `reason` minimal 10 karakter; maksimal 50 flag per izin; flag terkunci setelah finalize. | Mencegah data sampah dan flag massal untuk menebak. |
+| D-42 | Ekspor CSV: sel yang diawali `=`, `+`, `-`, `@`, tab, atau CR diberi awalan apostrof; file memakai UTF-8 dengan BOM. | Teks `reason` berasal dari peserta (CSV injection); BOM agar terbaca benar di Excel. |
+| D-43 | SSE dashboard (FR-50): autentikasi lewat cookie sesi, disertai cek tenant dan instruktur sesi; interval 3–5 detik; yang dikirim hanya ringkasan perubahan; tersedia fallback polling. | Ringan untuk 50 pengguna per sesi (bagian 10) dan tetap jalan di jaringan yang memblokir stream. |
+| D-44 | Skenario dan template diberi penanda data CONTOH ILUSTRATIF yang wajib divalidasi pakar K3. Tes konsistensi: setiap `fieldPath` pada `seededErrors` (termasuk `acceptedFieldPaths`) ada di template schema skenario itu, dan tiap skenario memuat kesalahan sesuai bagian 9. | Mitigasi risiko «konten dianggap prosedur resmi» (bagian 15). |
+| D-45 | Temuan review atas D-36 dan D-39 yang wajib diperbaiki: (1) Kepatuhan prosedur dihitung per peserta dari `Transition.actorId`, bukan dicocokkan dengan peran peserta saat ini, sehingga tukar peran tidak mengubah skor riwayat. (2) Komponen tanpa error yang relevan bagi peran peserta tidak diberi nilai gratis. Komponen itu dikeluarkan dari perhitungan, dan bobot sisanya dinormalisasi ulang. (3) Peran yang memang tidak melakukan transisi (`COORDINATOR`) dinilai dari `SupervisionNote`, bukan otomatis 0. (4) Penalti persetujuan berlaku untuk error `CRITICAL` yang belum diperbaiki di data izin, bukan sekadar belum di-flag. Menyetujui error yang sudah di-flag tetapi belum diperbaiki justru dikenai penalti. (5) Tukar peran ke `APPLICANT` hanya memindahkan `applicantId` dari izin milik pemohon sebelumnya, dan menaikkan versi izin terkait sehingga klien lama menerima 409. (6) Tes unit untuk semua kasus di atas. | Hasil review 17 November 2026. **Status: selesai** (diimplementasikan & teruji pada unit test cakupan > 90% di `src/modules/scoring/service.ts`). Butir 2–4 tetap terbuka untuk konfirmasi akhir pakar K3. |
+| D-46 | Flag yang cocok dengan `seededError` tetapi tidak relevan bagi peran peserta (`relevantRoles`) diabaikan: bukan tanda palsu dan tidak menambah poin komponen. | Adil bagi peserta yang jeli menemukan kesalahan lintas peran tanpa memberi poin di luar cakupan perannya. |
+| D-47 | Hanya `INSTRUCTOR` pemilik sesi yang boleh menukar peran peserta (`swapParticipantRole`); `TENANT_ADMIN` ditolak dengan `403`. Memperjelas D-39. | Pemisahan tugas (*separation of duties*): instruktur mengelola jalannya sesi, `TENANT_ADMIN` mengelola pengguna & pengaturan tenant. |
+
+### 17.6 Pengujian wajib M2
+
+- Negatif: peserta memanggil `/api/scenarios`, stream, dan export, hasilnya 403 atau respons tanpa `seededErrors`.
+- Umpan balik tidak tampil sebelum finalize dan tampil sesudahnya.
+- Skor: bobot kustom, penalti tanda palsu, lantai 0, dan finalize mengunci flag.
+- Reset mengembalikan kondisi awal skenario, mempertahankan peserta, dan memicu 409 pada klien berversi lama.
+- Isolasi tenant untuk semua rute sesi, termasuk join.
+- CSV injection.
+- Konsistensi `fieldPath` skenario terhadap template (D-44).
+- Seluruh e2e M1 tetap hijau.
+- Kriteria selesai (bagian 14): instruktur menjalankan sesi dengan 3 skenario dan melihat skor per peserta; lint, typecheck, unit, dan e2e hijau di CI.
+
+### 17.7 Dampak M2 pada bagian lain PRD
+
+| Bagian | Dampak |
+| --- | --- |
+| 6.2 (FR-10, FR-12, FR-13) | Kode gabung mengikuti D-38; FR-12 mengikuti D-32; reset mengikuti D-40. |
+| 6.5 (FR-41, FR-43) | Flag mengikuti D-41. Frasa «setelah submit» pada FR-43 diganti oleh D-31. |
+| 6.6 (FR-50, FR-51) | SSE mengikuti D-43; skor sementara hanya untuk instruktur (D-30); CSV mengikuti D-42. |
+| 7 (Model Data) | `Participant` mendapat `finalizedAt` (D-34). `Tenant.settings` memuat `scoringWeights` (D-33). |
+| 9 (Skenario dan Penilaian) | Struktur `seededErrors` ditambah sesuai D-36; data awal memakai waktu relatif (D-37); «umpan balik setelah peserta menyelesaikan» berarti finalize (D-31). |
+| 13 (Konfigurasi) | Bobot penilaian per tenant disimpan sesuai D-33. |
+| 6.4 (FR-35) | Penyimpanan daftar periksa mengikuti D-20 (ditutup). |
+| 7 (Model Data) | `Transition` mendapat `actorRole` dan `payloadJson` (D-20). |

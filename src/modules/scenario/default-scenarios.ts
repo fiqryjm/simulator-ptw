@@ -10,6 +10,15 @@ export const scoringComponentSchema = z.enum([
 
 export type ScoringComponent = z.infer<typeof scoringComponentSchema>;
 
+export const fixRuleSchema = z.object({
+  target: z.enum(['PTW', 'JSA', 'ADDITIONAL']),
+  fieldPath: z.string().min(1),
+  expectedType: z.enum(['EQUALS', 'NOT_EMPTY', 'NUMERIC_MAX', 'ARRAY_CONTAINS_CODE']),
+  expectedValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
+});
+
+export type FixRule = z.infer<typeof fixRuleSchema>;
+
 export const seededErrorSchema = z.object({
   id: z.string().min(1),
   fieldPath: z.string().min(1),
@@ -20,6 +29,7 @@ export const seededErrorSchema = z.object({
   points: z.number().positive(),
   description: z.string().min(1),
   explanation: z.string().min(1),
+  fixRule: fixRuleSchema.optional(),
 });
 
 export type SeededError = z.infer<typeof seededErrorSchema>;
@@ -118,6 +128,12 @@ export const DEFAULT_MVP_SCENARIOS: DefaultScenarioDefinition[] = [
         description: 'Izin Kerja Panas (Hot Work) tidak dipilih pada formulir PTW',
         explanation:
           'Pekerjaan pengelasan di area proses hidrokarbon wajib melampirkan Izin Kerja Panas (add_hot_work = Ya).',
+        fixRule: {
+          target: 'PTW',
+          fieldPath: 'add_hot_work',
+          expectedType: 'EQUALS',
+          expectedValue: 'YES',
+        },
       },
       {
         id: 'err_og_lel_missing',
@@ -134,6 +150,12 @@ export const DEFAULT_MVP_SCENARIOS: DefaultScenarioDefinition[] = [
         description: 'Hasil uji gas LEL tidak dicatat sebelum kerja panas',
         explanation:
           'Pengukuran Lower Explosive Limit (LEL) wajib dicatat dan bernilai 0% sebelum kerja panas di dekat jalur proses.',
+        fixRule: {
+          target: 'ADDITIONAL',
+          fieldPath: 'HOT_WORK.lelReadingPercent',
+          expectedType: 'NUMERIC_MAX',
+          expectedValue: 0,
+        },
       },
       {
         id: 'err_og_fire_watcher',
@@ -149,6 +171,12 @@ export const DEFAULT_MVP_SCENARIOS: DefaultScenarioDefinition[] = [
         description: 'Petugas pengawas api (Fire Watcher) dan pencegahan kebakaran belum ditugaskan',
         explanation:
           'Setiap kerja panas harus diawasi Fire Watcher terlatih dan dilengkapi APAR siap pakai.',
+        fixRule: {
+          target: 'ADDITIONAL',
+          fieldPath: 'HOT_WORK.fireWatcherAssigned',
+          expectedType: 'EQUALS',
+          expectedValue: 'YES',
+        },
       },
     ],
   },
@@ -223,6 +251,12 @@ export const DEFAULT_MVP_SCENARIOS: DefaultScenarioDefinition[] = [
         description: 'Izin tambahan LOTO belum dilampirkan untuk pekerjaan panel bertegangan',
         explanation:
           'Pekerjaan pada sumber energi listrik 6.6 kV wajib mengaktifkan izin tambahan Lock Out Tag Out (LOTO).',
+        fixRule: {
+          target: 'PTW',
+          fieldPath: 'add_loto',
+          expectedType: 'EQUALS',
+          expectedValue: 'YES',
+        },
       },
       {
         id: 'err_pp_isolation_points',
@@ -235,6 +269,11 @@ export const DEFAULT_MVP_SCENARIOS: DefaultScenarioDefinition[] = [
         description: 'Titik isolasi energi dan verifikasi zero-energy tidak lengkap',
         explanation:
           'Seluruh breaker hulu/hilir dan verifikasi tegangan nol (try-out) wajib didokumentasikan pada sub-formulir LOTO.',
+        fixRule: {
+          target: 'ADDITIONAL',
+          fieldPath: 'LOTO.isolationPoints',
+          expectedType: 'NOT_EMPTY',
+        },
       },
       {
         id: 'err_pp_cable_check',
@@ -247,6 +286,12 @@ export const DEFAULT_MVP_SCENARIOS: DefaultScenarioDefinition[] = [
         description: 'Kabel dan peralatan kerja listrik belum dinyatakan diperiksa/layak',
         explanation:
           'Daftar periksa kelayakan alat (no. 6) dan peralatan bertenaga pada JSA tidak boleh dibiarkan Tidak.',
+        fixRule: {
+          target: 'PTW',
+          fieldPath: 'chk_6_equipment_safe',
+          expectedType: 'EQUALS',
+          expectedValue: 'YES',
+        },
       },
     ],
   },
@@ -322,6 +367,12 @@ export const DEFAULT_MVP_SCENARIOS: DefaultScenarioDefinition[] = [
         description: 'Barikade dan pengaturan lalu lintas di sekitar galian tidak tersedia',
         explanation:
           'Pekerjaan di sisi jalur hauling aktif wajib memasang barikade keras/rambu peringatan serta pengaturan lalu lintas.',
+        fixRule: {
+          target: 'JSA',
+          fieldPath: 'checklists.barricades',
+          expectedType: 'EQUALS',
+          expectedValue: 'YES',
+        },
       },
       {
         id: 'err_mn_excavation_code',
@@ -334,6 +385,12 @@ export const DEFAULT_MVP_SCENARIOS: DefaultScenarioDefinition[] = [
         description: 'JSA belum mencantumkan kode bahaya Galian (kode O)',
         explanation:
           'Langkah kerja penggalian wajib mengidentifikasi bahaya Galian (kode O) dan pengendalian longsor/shoring.',
+        fixRule: {
+          target: 'JSA',
+          fieldPath: 'steps[].hazardCode',
+          expectedType: 'ARRAY_CONTAINS_CODE',
+          expectedValue: 'O',
+        },
       },
       {
         id: 'err_mn_traffic_code',
@@ -346,6 +403,12 @@ export const DEFAULT_MVP_SCENARIOS: DefaultScenarioDefinition[] = [
         description: 'Bahaya lalu lintas kendaraan tambang (kode K) belum dikendalikan di JSA',
         explanation:
           'JSA harus memuat bahaya lalu lintas kendaraan (kode K) dan pengendalian berupa spotter/flagman serta pembatas jarak aman.',
+        fixRule: {
+          target: 'JSA',
+          fieldPath: 'steps[].hazardCode',
+          expectedType: 'ARRAY_CONTAINS_CODE',
+          expectedValue: 'K',
+        },
       },
     ],
   },

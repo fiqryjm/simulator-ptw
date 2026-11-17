@@ -16,7 +16,14 @@ test.describe('M2 Session, Scenario Flagging & Scoring', () => {
   }) => {
     await loginAs(page, 'instructor@demo.ptw.local');
     await page.getByTestId('create-session-btn').click();
-    await expect(page.getByText(/Sesi baru dibuat dengan kode gabung/i)).toBeVisible();
+    const createdBanner = page.getByText(/Sesi baru dibuat dengan kode gabung:/i);
+    await expect(createdBanner).toBeVisible({ timeout: 15_000 });
+    const bannerText = (await createdBanner.textContent()) ?? '';
+    const codeMatch = /kode gabung:\s*([A-Z0-9]+)/i.exec(bannerText);
+    const joinCode = codeMatch?.[1] ?? '';
+    await expect(page.getByText(`Monitor Real-Time Sesi: ${joinCode}`)).toBeVisible({
+      timeout: 15_000,
+    });
 
     await page.getByRole('button', { name: /Pantau \(Read-Only\)/i }).first().click();
     await page.waitForURL('**/permits/**');
