@@ -1,0 +1,62 @@
+{
+  "app": {
+    "title": "Simulator Permit to Work (PTW)",
+    "trainingBanner": "Alat Pelatihan — Data Simulasi",
+    "logout": "Keluar",
+    "language": "Bahasa"
+  },
+  "auth": {
+    "loginTitle": "Masuk ke Simulator PTW",
+    "loginSubtitle": "Gunakan akun pelatihan Anda untuk memulai sesi simulasi.",
+    "email": "Email",
+    "password": "Kata Sandi",
+    "submit": "Masuk",
+    "submitting": "Memproses...",
+    "invalidCredentials": "Email atau kata sandi salah.",
+    "rateLimited": "Terlalu banyak percobaan gagal. Silakan coba lagi nanti."
+  },
+  "roles": {
+    "APPLICANT": "Pemohon / Penerima Izin",
+    "SUPERVISOR": "Pengawas Pekerjaan",
+    "ISSUER": "Pemberi Izin",
+    "COORDINATOR": "Koordinator Pengawasan",
+    "INSTRUCTOR": "Instruktur",
+    "TENANT_ADMIN": "Admin Klien",
+    "SUPER_ADMIN": "Super Admin"
+  },
+  "permitStatus": {
+    "DRAFT": "Draf",
+    "SUBMITTED": "Diajukan",
+    "PENDING_ISSUANCE": "Menunggu Penerbitan",
+    "APPROVED": "Disetujui",
+    "ACTIVE": "Aktif",
+    "COMPLETED": "Selesai",
+    "CLOSED": "Ditutup",
+    "RETURNED": "Dikembalikan",
+    "REJECTED": "Ditolak",
+    "SUSPENDED": "Ditangguhkan",
+    "EXPIRED": "Kedaluwarsa"
+  },
+  "dashboard": {
+    "welcome": "Selamat datang, {name}",
+    "roleLabel": "Peran aktif",
+    "waitingTitle": "Menunggu Tindakan Anda ({count})",
+    "waitingEmpty": "Tidak ada izin yang menunggu tindakan Anda saat ini.",
+    "allPermitsTitle": "Daftar Izin Kerja",
+    "createPermit": "Buat PTW Baru",
+    "openPermit": "Buka Izin",
+    "emptyStateTitle": "Dashboard {role}",
+    "emptyStateDescription": "Tidak ada daftar izin khusus untuk peran ini pada tahap M1."
+  },
+  "permit": {
+    "backToDashboard": "Kembali ke Dashboard",
+    "printPdf": "Cetak PDF (Simulasi)",
+    "saveDraft": "Simpan Draf PTW",
+    "submitPermit": "Ajukan Izin",
+    "resubmitPermit": "Ajukan Ulang Izin",
+    "saveJsa": "Simpan JSA",
+    "saveSignature": "Simpan Tanda Tangan",
+    "clearSignature": "Hapus",
+    "readOnlyNotice": "Formulir bersifat read-only setelah diajukan."
+  }
+}

@@ -1,0 +1,386 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  APPLICANT
+  SUPERVISOR
+  ISSUER
+  COORDINATOR
+  INSTRUCTOR
+  TENANT_ADMIN
+  SUPER_ADMIN
+}
+
+enum Industry {
+  OIL_AND_GAS
+  POWER_PLANT
+  MINING
+}
+
+enum FormTemplateType {
+  PTW
+  JSA
+  ADDITIONAL
+}
+
+enum SessionStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum PermitStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_ISSUANCE
+  APPROVED
+  ACTIVE
+  COMPLETED
+  CLOSED
+  RETURNED
+  REJECTED
+  SUSPENDED
+  EXPIRED
+}
+
+enum AdditionalPermitType {
+  LOTO
+  HEIGHT
+  B3_EXCAVATION
+  CONFINED_SPACE
+  HOT_WORK
+}
+
+enum AdditionalPermitStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model Tenant {
+  id         String     @id @default(cuid())
+  name       String
+  slug       String     @unique
+  industries Industry[]
+  settings   Json       @default("{\"heightThresholdMeters\": 1.8, \"timezone\": \"Asia/Jakarta\"}")
+  isSystem   Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  users              User[]
+  formTemplates      FormTemplate[]
+  scenarios          Scenario[]
+  sessions           Session[]
+  participants       Participant[]
+  permits            Permit[]
+  permitVersions     PermitVersion[]
+  additionalPermits  AdditionalPermit[]
+  jsaRecords         JsaRecord[]
+  signatures         Signature[]
+  transitions        Transition[]
+  supervisionNotes   SupervisionNote[]
+  errorFlags         ErrorFlag[]
+  scores             Score[]
+  auditLogs          AuditLog[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  instructedSessions Session[]         @relation("InstructorSessions")
+  participations     Participant[]
+  appliedPermits     Permit[]          @relation("ApplicantPermits")
+  signatures         Signature[]
+  supervisionNotes   SupervisionNote[]
+  auditLogs          AuditLog[]
+
+  @@index([tenantId])
+  @@index([tenantId, role])
+}
+
+model FormTemplate {
+  id         String           @id @default(cuid())
+  tenantId   String
+  type       FormTemplateType
+  industry   Industry
+  schemaJson Json
+  version    Int              @default(1)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, type, industry])
+}
+
+model Scenario {
+  id               String   @id @default(cuid())
+  tenantId         String
+  title            String
+  industry         Industry
+  description      String
+  initialDataJson  Json
+  seededErrorsJson Json
+  templateIds      String[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@index([tenantId])
+  @@index([tenantId, industry])
+}
+
+model Session {
+  id           String        @id @default(cuid())
+  tenantId     String
+  scenarioId   String
+  instructorId String
+  joinCode     String        @unique
+  status       SessionStatus @default(PENDING)
+  startedAt    DateTime?
+  endedAt      DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  scenario     Scenario      @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
+  instructor   User          @relation("InstructorSessions", fields: [instructorId], references: [id], onDelete: Restrict)
+  participants Participant[]
+  permits      Permit[]
+  scores       Score[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model Participant {
+  id            String   @id @default(cuid())
+  tenantId      String
+  sessionId     String
+  userId        String
+  simulatedRole Role
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session    Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  errorFlags ErrorFlag[]
+  scores     Score[]
+
+  @@unique([sessionId, userId])
+  @@index([tenantId])
+}
+
+model Permit {
+  id             String       @id @default(cuid())
+  tenantId       String
+  sessionId      String
+  applicantId    String
+  status         PermitStatus @default(DRAFT)
+  dataJson       Json
+  validFrom      DateTime
+  validTo        DateTime
+  currentVersion Int          @default(1)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session           Session            @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  applicant         User               @relation("ApplicantPermits", fields: [applicantId], references: [id], onDelete: Restrict)
+  versions          PermitVersion[]
+  additionalPermits AdditionalPermit[]
+  jsaRecords        JsaRecord[]
+  signatures        Signature[]
+  transitions       Transition[]
+  supervisionNotes  SupervisionNote[]
+  errorFlags        ErrorFlag[]
+
+  @@index([tenantId])
+  @@index([tenantId, sessionId])
+  @@index([tenantId, status])
+}
+
+model PermitVersion {
+  id        String   @id @default(cuid())
+  tenantId  String
+  permitId  String
+  version   Int
+  dataJson  Json
+  changedBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permit Permit @relation(fields: [permitId], references: [id], onDelete: Cascade)
+
+  @@unique([permitId, version])
+  @@index([tenantId])
+}
+
+model AdditionalPermit {
+  id        String                 @id @default(cuid())
+  tenantId  String
+  permitId  String
+  type      AdditionalPermitType
+  dataJson  Json
+  status    AdditionalPermitStatus @default(DRAFT)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permit Permit @relation(fields: [permitId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, permitId])
+}
+
+model JsaRecord {
+  id        String   @id @default(cuid())
+  tenantId  String
+  permitId  String
+  dataJson  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permit Permit @relation(fields: [permitId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, permitId])
+}
+
+model Signature {
+  id        String   @id @default(cuid())
+  tenantId  String
+  permitId  String
+  role      Role
+  userId    String
+  imageData String
+  signedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permit Permit @relation(fields: [permitId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, permitId])
+}
+
+model Transition {
+  id          String       @id @default(cuid())
+  tenantId    String
+  permitId    String
+  fromStatus  PermitStatus
+  toStatus    PermitStatus
+  actorId     String?
+  actorRole   String
+  comment     String?
+  payloadJson Json?
+  at          DateTime     @default(now())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permit Permit @relation(fields: [permitId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, permitId])
+}
+
+model SupervisionNote {
+  id        String   @id @default(cuid())
+  tenantId  String
+  permitId  String
+  authorId  String
+  text      String
+  at        DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permit Permit @relation(fields: [permitId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, permitId])
+}
+
+model ErrorFlag {
+  id            String   @id @default(cuid())
+  tenantId      String
+  permitId      String
+  participantId String
+  seededErrorId String?
+  fieldPath     String
+  reason        String
+  at            DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permit      Permit      @relation(fields: [permitId], references: [id], onDelete: Cascade)
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, permitId])
+}
+
+model Score {
+  id            String   @id @default(cuid())
+  tenantId      String
+  sessionId     String
+  participantId String
+  totalScore    Float
+  breakdownJson Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session     Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, participantId])
+  @@index([tenantId])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String
+  actorId      String
+  action       String
+  entity       String
+  entityId     String
+  at           DateTime @default(now())
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor  User   @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, entity, entityId])
+}

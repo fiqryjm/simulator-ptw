@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: simulator-ptw-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ptw
+      POSTGRES_PASSWORD: ptw_dev_password
+      POSTGRES_DB: simulator_ptw
+    ports:
+      - "5432:5432"
+    volumes:
+      - simulator_ptw_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ptw -d simulator_ptw"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  simulator_ptw_pgdata:

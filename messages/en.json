@@ -1,0 +1,62 @@
+{
+  "app": {
+    "title": "Permit to Work (PTW) Simulator",
+    "trainingBanner": "Training Tool — Simulation Data",
+    "logout": "Sign Out",
+    "language": "Language"
+  },
+  "auth": {
+    "loginTitle": "Sign in to PTW Simulator",
+    "loginSubtitle": "Use your training account to start a simulation session.",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign In",
+    "submitting": "Signing in...",
+    "invalidCredentials": "Invalid email or password.",
+    "rateLimited": "Too many failed attempts. Please try again later."
+  },
+  "roles": {
+    "APPLICANT": "Applicant / Permit Receiver",
+    "SUPERVISOR": "Work Supervisor",
+    "ISSUER": "Permit Issuer",
+    "COORDINATOR": "Supervision Coordinator",
+    "INSTRUCTOR": "Instructor",
+    "TENANT_ADMIN": "Tenant Admin",
+    "SUPER_ADMIN": "Super Admin"
+  },
+  "permitStatus": {
+    "DRAFT": "Draft",
+    "SUBMITTED": "Submitted",
+    "PENDING_ISSUANCE": "Pending Issuance",
+    "APPROVED": "Approved",
+    "ACTIVE": "Active",
+    "COMPLETED": "Completed",
+    "CLOSED": "Closed",
+    "RETURNED": "Returned",
+    "REJECTED": "Rejected",
+    "SUSPENDED": "Suspended",
+    "EXPIRED": "Expired"
+  },
+  "dashboard": {
+    "welcome": "Welcome, {name}",
+    "roleLabel": "Active role",
+    "waitingTitle": "Waiting for Your Action ({count})",
+    "waitingEmpty": "No permits are waiting for your action right now.",
+    "allPermitsTitle": "Permit List",
+    "createPermit": "Create New PTW",
+    "openPermit": "Open Permit",
+    "emptyStateTitle": "{role} Dashboard",
+    "emptyStateDescription": "No permit action queue for this role in M1."
+  },
+  "permit": {
+    "backToDashboard": "Back to Dashboard",
+    "printPdf": "Print PDF (Simulation)",
+    "saveDraft": "Save PTW Draft",
+    "submitPermit": "Submit Permit",
+    "resubmitPermit": "Resubmit Permit",
+    "saveJsa": "Save JSA",
+    "saveSignature": "Save Signature",
+    "clearSignature": "Clear",
+    "readOnlyNotice": "Form is read-only after submission."
+  }
+}
